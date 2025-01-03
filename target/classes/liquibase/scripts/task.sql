@@ -1,0 +1,13 @@
+-- liquibase formatted sql
+
+--changeset Sematy95:1
+CREATE TABLE notification_task(
+    ID BIGSERIAL PRIMARY KEY ,
+    CHAT_ID VARCHAR NOT NULL ,
+    REQUEST VARCHAR NOT NULL,
+    MESSAGE VARCHAR NOT NULL,
+    NOTIFICATION_DATE TIMESTAMP NOT NULL,
+    CREATION_DATE TIMESTAMP NOT NULL
+    );
+--changeset Sematy95:2
+create table frog();
