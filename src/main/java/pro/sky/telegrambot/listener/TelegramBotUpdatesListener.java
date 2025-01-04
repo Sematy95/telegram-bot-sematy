@@ -25,7 +25,7 @@ import static pro.sky.telegrambot.util.TelegramBotUtil.*;
 @Service
 public class TelegramBotUpdatesListener implements UpdatesListener {
 
-    private final Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
+    private final static Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
 
     private final TelegramBot telegramBot;
     private final TaskRepository taskRepository;
@@ -46,23 +46,25 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
             String text = update.message().text();
 
             logger.info("Processing update: {}", update);
-            if (!checkMessage(text)) {
+            if (!checkMessage(update)) {
                 logger.warn("Message is not correct: {}", update);
                 return;
             }
+
             Matcher matcher = DATE_VALIDATION_PATTERN.matcher(text);
-            String chatId = update.message().chat().id().toString();
+            String chatId = getChatId(update);
             SendMessage sendMessage = null;
 
             if (text.equals(START)) {
                 sendMessage = new SendMessage(chatId, START_MESSAGE);
+            } else if (!matcher.matches()) {
+                sendMessage = new SendMessage(chatId, "Request form is incorrect");
             } else if (matcher.matches()) {
                 try {
-
-                    sendMessage = new SendMessage(chatId, "Request is received");
+                    sendMessage = new SendMessage(chatId, ANSWER);
                     taskRepository.save(new NotificationTask(
                                     chatId,
-                                    matcher.group(2),
+                                    matcher.group(3),
                                     LocalDateTime.parse(matcher.group(1), DATE_FORMATTER)
                             )
                     );
@@ -71,7 +73,6 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
                     logger.error("[{}]", e.getMessage());
                     sendMessage = new SendMessage(chatId, "Invalid date format");
                 }
-
             }
             if (sendMessage != null) {
                 telegramBot.execute(sendMessage);
@@ -81,18 +82,23 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
 
     }
 
-    private boolean checkMessage(String text) {
-        if (text.isBlank() || text.isEmpty()) {
-            logger.warn("Message is empty");
-            return false;
-        } else return true;
+    private boolean checkMessage(Update update) {
+        return update.message() != null && !update.message().text().isBlank();
     }
 
-    public void execute (Collection<SendMessage> sendMessages) {
+    public void execute(Collection<SendMessage> sendMessages) {
         sendMessages.forEach(telegramBot::execute);
     }
+
     public void execute(SendMessage sendMessages) {
         execute(List.of(sendMessages));
+    }
+
+    private String getChatId(Update update) {
+        if (update.message().chat() == null) {
+            throw new IllegalArgumentException("chatId is not exist");
+        }
+        return String.valueOf(update.message().chat().id());
     }
 
 }

@@ -10,7 +10,6 @@ public class NotificationTask {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     private String chatId;
     private String message;
     private LocalDateTime creationDate;
@@ -21,7 +20,6 @@ public class NotificationTask {
 
     public NotificationTask(String chatId, String message, LocalDateTime notificationDate) {
         this.chatId = chatId;
-
         this.message = message;
         this.notificationDate = notificationDate;
         creationDate = LocalDateTime.now();
@@ -31,37 +29,36 @@ public class NotificationTask {
         return id;
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public String getChatId() {
         return chatId;
     }
 
-    public void setChatId(String chatId) {
-        this.chatId = chatId;
-    }
-
-
     public String getMessage() {
         return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
     }
 
     public LocalDateTime getCreationDate() {
         return creationDate;
     }
 
-    public void setCreationDate(LocalDateTime creatingDate) {
-        this.creationDate = creatingDate;
-    }
-
     public LocalDateTime getNotificationDate() {
         return notificationDate;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setChatId(String chatId) {
+        this.chatId = chatId;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public void setCreationDate(LocalDateTime creationDate) {
+        this.creationDate = creationDate;
     }
 
     public void setNotificationDate(LocalDateTime notificationDate) {
