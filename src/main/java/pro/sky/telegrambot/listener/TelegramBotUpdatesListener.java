@@ -8,18 +8,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import pro.sky.telegrambot.model.NotificationTask;
 import pro.sky.telegrambot.repository.TaskRepository;
 
 import javax.annotation.PostConstruct;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Collection;
 import java.util.List;
+import java.util.regex.Matcher;
 
-import static pro.sky.telegrambot.util.TelegramBotUtil.START;
-import static pro.sky.telegrambot.util.TelegramBotUtil.START_MESSAGE;
+import static pro.sky.telegrambot.util.TelegramBotUtil.*;
 
 @Service
 public class TelegramBotUpdatesListener implements UpdatesListener {
 
-    private final Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
+    private final static Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
 
     private final TelegramBot telegramBot;
     private final TaskRepository taskRepository;
@@ -38,17 +44,35 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
     public int process(List<Update> updates) {
         updates.forEach(update -> {
             String text = update.message().text();
+
             logger.info("Processing update: {}", update);
-            if (!checkMessage(text)) {
+            if (!checkMessage(update)) {
                 logger.warn("Message is not correct: {}", update);
                 return;
             }
 
-            Long chatId = update.message().chat().id();
+            Matcher matcher = DATE_VALIDATION_PATTERN.matcher(text);
+            String chatId = getChatId(update);
             SendMessage sendMessage = null;
 
             if (text.equals(START)) {
                 sendMessage = new SendMessage(chatId, START_MESSAGE);
+            } else if (!matcher.matches()) {
+                sendMessage = new SendMessage(chatId, "Request form is incorrect");
+            } else if (matcher.matches()) {
+                try {
+                    sendMessage = new SendMessage(chatId, ANSWER);
+                    taskRepository.save(new NotificationTask(
+                                    chatId,
+                                    matcher.group(3),
+                                    LocalDateTime.parse(matcher.group(1), DATE_FORMATTER)
+                            )
+                    );
+
+                } catch (DateTimeParseException e) {
+                    logger.error("[{}]", e.getMessage());
+                    sendMessage = new SendMessage(chatId, "Invalid date format");
+                }
             }
             if (sendMessage != null) {
                 telegramBot.execute(sendMessage);
@@ -58,11 +82,23 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
 
     }
 
-    private boolean checkMessage(String text) {
-        if (text.isBlank() || text.isEmpty()) {
-            logger.warn("Message is empty");
-            return false;
-        } else return true;
+    private boolean checkMessage(Update update) {
+        return update.message() != null && !update.message().text().isBlank();
+    }
+
+    public void execute(Collection<SendMessage> sendMessages) {
+        sendMessages.forEach(telegramBot::execute);
+    }
+
+    public void execute(SendMessage sendMessages) {
+        execute(List.of(sendMessages));
+    }
+
+    private String getChatId(Update update) {
+        if (update.message().chat() == null) {
+            throw new IllegalArgumentException("chatId is not exist");
+        }
+        return String.valueOf(update.message().chat().id());
     }
 
 }
